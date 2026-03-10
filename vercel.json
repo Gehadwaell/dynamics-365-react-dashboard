@@ -1,12 +1,12 @@
 {
   "rewrites": [
     {
-      "source": "/api-token/:tenantId/oauth2/v2.0/token",
-      "destination": "https://login.microsoftonline.com/:tenantId/oauth2/v2.0/token"
+      "source": "/api-data/:path*",
+      "destination": "https://growpath.sandbox.operations.eu.dynamics.com/:path*"
     },
     {
-      "source": "/api-data/data/:path*",
-      "destination": "https://growpath.sandbox.operations.eu.dynamics.com/data/:path*"
+      "source": "/(.*)",
+      "destination": "/"
     }
   ]
 }

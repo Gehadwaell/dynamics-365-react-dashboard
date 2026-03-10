@@ -7,11 +7,13 @@ import OrderDetailsPage from './pages/OrderDetailsPage';
 
 function App() {
   const [showForm, setShowForm] = useState(false);
+  
+  // 🔥 Extract getProductVariants right here
   const { 
-    orders, totalItems, customers, currencies, products, loading,
+    orders, totalItems, customers, currencies, sites, warehouses, loading,
     lines, linesLoading, fetchOrderLines, createOrderLine,
     searchTerm, setSearchTerm, currentPage, setCurrentPage, itemsPerPage,
-    createOrder 
+    createOrder, searchProducts, getProductVariants 
   } = useOrders();
 
   if (loading) return (
@@ -40,9 +42,11 @@ function App() {
           } />
           <Route path="/order/:id" element={
             <OrderDetailsPage 
-              orders={orders} lines={lines} products={products}
+              orders={orders} lines={lines} 
+              sites={sites} warehouses={warehouses}
               linesLoading={linesLoading} fetchOrderLines={fetchOrderLines} 
-              createOrderLine={createOrderLine} 
+              createOrderLine={createOrderLine} searchProducts={searchProducts}
+              getProductVariants={getProductVariants} // 🔥 Pass it into the page here
             />
           } />
         </Routes>
