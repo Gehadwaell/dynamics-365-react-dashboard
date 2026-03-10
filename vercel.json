@@ -5,6 +5,10 @@
       "destination": "https://growpath.sandbox.operations.eu.dynamics.com/:path*"
     },
     {
+      "source": "/api-token/:path*",
+      "destination": "https://login.microsoftonline.com/:path*"
+    },
+    {
       "source": "/(.*)",
       "destination": "/"
     }
