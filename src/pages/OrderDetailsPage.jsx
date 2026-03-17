@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Package, Plus, ArrowLeft, Loader2, Lock } from 'lucide-react';
 import Select from 'react-select';
 import AsyncSelect from 'react-select/async'; 
+import toast from 'react-hot-toast'; // <--- ADDED TOAST IMPORT
 
 const selectStyles = {
   control: (base, state) => ({
@@ -50,7 +51,10 @@ const OrderDetailsPage = ({ orders, lines, sites, warehouses, linesLoading, fetc
 
   const handleAddLine = async (e) => {
     e.preventDefault();
-    if (!newLine.itemNumber) return;
+    if (!newLine.itemNumber) {
+      toast.error('Please select a product.'); // <--- ADDED TOAST ERROR
+      return;
+    }
     setIsSubmitting(true);
     const success = await createOrderLine(id, newLine);
     if (success) {
@@ -159,14 +163,15 @@ const OrderDetailsPage = ({ orders, lines, sites, warehouses, linesLoading, fetc
             
             <form onSubmit={handleAddLine} className="space-y-6">
               
-              <div>
+  <div>
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] block mb-2 ml-2">Product *</label>
                 <AsyncSelect 
                   loadOptions={searchProducts}
+                  defaultOptions={true} 
+                  cacheOptions // <--- 🔥 ADD THIS PROPERTY
                   styles={selectStyles}
                   placeholder="Type to search D365..."
                   isClearable
-                  // 🔥 NEW: Trigger variant fetch when product is selected!
                   onChange={async (selected) => {
                     const item = selected ? selected.value : '';
                     const stype = selected ? selected.subtype : '';

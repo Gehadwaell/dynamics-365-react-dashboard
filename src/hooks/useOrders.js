@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getAccessToken } from '../services/authService';
+import toast from 'react-hot-toast'; 
 
 export const useOrders = () => {
   const [allOrders, setAllOrders] = useState([]);
@@ -18,7 +19,6 @@ export const useOrders = () => {
 
   // --- 1. CORE FUNCTIONS ---
 
-  // Fetches line items for a specific order
   const fetchOrderLines = useCallback(async (orderId) => {
     if (!orderId) return;
     setLinesLoading(true);
@@ -37,18 +37,24 @@ export const useOrders = () => {
     }
   }, []);
 
-  // Async Product search for the creation modal
-  const searchProducts = async (inputValue) => {
-    if (!inputValue) return []; 
+// 🔥 FIX: Wrapped in useCallback so React doesn't cancel the fetch during page load!
+  const searchProducts = useCallback(async (inputValue) => {
     try {
       const token = await getAccessToken();
-      const filterString = `ProductNumber eq '*${inputValue}*'`;
-      const encodedFilter = encodeURIComponent(filterString);
       
-      const res = await fetch(
-        `/api-data/data/ProductsV2?$select=ProductNumber,ProductName,ProductSubType&$filter=${encodedFilter}&$top=20`, 
-        { headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' } }
-      );
+      let url = `/api-data/data/ProductsV2?$select=ProductNumber,ProductName,ProductSubType&$top=20`;
+      
+      if (inputValue && inputValue.trim().length > 0) {
+        const filterStr = `ProductNumber eq '*${inputValue.trim()}*'`;
+        url += `&$filter=${encodeURIComponent(filterStr)}`;
+      }
+        
+      const res = await fetch(url, { 
+        headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' } 
+      });
+      
+      if (!res.ok) return [];
+
       const data = await res.json();
       return (data.value || []).map(p => ({
         value: p.ProductNumber,
@@ -58,9 +64,8 @@ export const useOrders = () => {
     } catch (err) {
       return [];
     }
-  };
+  }, []); // <--- Empty dependency array locks it in memory!
 
-  // Checks available variants (Color/Size/Style) for a specific item
   const getProductVariants = async (itemNumber) => {
     try {
       const token = await getAccessToken();
@@ -75,8 +80,8 @@ export const useOrders = () => {
     }
   };
 
-  // POST a new line to an existing order
   const createOrderLine = async (orderId, lineData) => {
+    const loadingToast = toast.loading('Adding Sales Line...'); 
     try {
       const token = await getAccessToken();
       const payload = {
@@ -101,19 +106,21 @@ export const useOrders = () => {
       
       if (res.ok) {
         await fetchOrderLines(orderId);
+        toast.success('Line added successfully!', { id: loadingToast }); 
         return true;
       } else {
         const errorData = await res.json();
-        alert(`D365 Rejection: ${errorData?.error?.message}`);
+        toast.error(`D365 Rejection: ${errorData?.error?.message}`, { id: loadingToast, duration: 6000 }); 
         return false;
       }
     } catch (err) {
+      toast.error('Network error.', { id: loadingToast }); 
       return false;
     }
   };
 
-  // POST a new Sales Order Header
   const createOrder = async (orderData) => {
+    const loadingToast = toast.loading('Creating Sales Order...'); 
     try {
       const token = await getAccessToken();
       const payload = {
@@ -131,11 +138,9 @@ export const useOrders = () => {
       if (res.ok) {
         const result = await res.json();
         
-        // 🔥 THE FIX: Find the actual customer name from our loaded customers list
         const selectedCustomer = customers.find(c => c.CustomerAccount === orderData.customerAccount);
         const customerName = selectedCustomer ? selectedCustomer.NameAlias : "New Order";
 
-        // Optimistic state update: Inject the new order immediately with the real name
         setAllOrders(prev => [{ 
           SalesOrderNumber: result.SalesOrderNumber, 
           SalesOrderName: customerName, 
@@ -144,13 +149,15 @@ export const useOrders = () => {
         }, ...prev]);
 
         setCurrentPage(1); 
+        toast.success('Sales Order created!', { id: loadingToast }); 
         return true;
       } else {
         const errorData = await res.json();
-        alert(`Failed to create order: ${errorData?.error?.message}`);
+        toast.error(`Failed to create order: ${errorData?.error?.message}`, { id: loadingToast, duration: 6000 }); 
         return false;
       }
     } catch (err) {
+      toast.error('Network error.', { id: loadingToast }); 
       return false;
     }
   };
@@ -162,7 +169,6 @@ export const useOrders = () => {
         const token = await getAccessToken();
         const headers = { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' };
         
-        // 🔥 BACKEND SORTING: Verified by Postman to use 'OrderCreationDateTime'
         const [oRes, sRes, wRes, cRes, cuRes] = await Promise.all([
           fetch("/api-data/data/SalesOrderHeadersV3?cross-company=true&$filter=dataAreaId eq 'usmf'&$select=SalesOrderNumber,SalesOrderName,SalesOrderStatus,OrderingCustomerAccountNumber,OrderCreationDateTime&$orderby=OrderCreationDateTime desc&$top=100", { headers }),
           fetch('/api-data/data/OperationalSites?$select=SiteId,SiteName', { headers }),

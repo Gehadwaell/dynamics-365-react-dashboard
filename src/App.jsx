@@ -1,53 +1,57 @@
 import React, { useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import { useOrders } from './hooks/useOrders';
+import { usePurchaseRequisitions } from './hooks/usePurchaseRequisitions';
+import { usePurchaseOrders } from './hooks/usePurchaseOrders';
 import Sidebar from './components/Sidebar';
 import OrderListPage from './pages/OrderListPage';
 import OrderDetailsPage from './pages/OrderDetailsPage';
+import PurchaseRequisitions from './pages/PurchaseRequisitions';
+import RequisitionDetailsPage from './pages/RequisitionDetailsPage';
+import PurchaseOrdersPage from './pages/PurchaseOrdersPage';
+import PurchaseOrderDetailsPage from './pages/PurchaseOrderDetailsPage';
 
 function App() {
   const [showForm, setShowForm] = useState(false);
-  
-  // 🔥 Extract getProductVariants right here
-  const { 
-    orders, totalItems, customers, currencies, sites, warehouses, loading,
-    lines, linesLoading, fetchOrderLines, createOrderLine,
-    searchTerm, setSearchTerm, currentPage, setCurrentPage, itemsPerPage,
-    createOrder, searchProducts, getProductVariants 
-  } = useOrders();
+  const salesHook = useOrders();
+  const prHook = usePurchaseRequisitions();
+  const poHook = usePurchaseOrders();
 
-  if (loading) return (
+  if (salesHook.loading || prHook.loading || poHook.loading) return (
     <div className="flex h-screen w-full items-center justify-center bg-[#F8FAFC]">
-      <div className="flex flex-col items-center gap-4">
-        <div className="w-16 h-16 border-4 border-blue-100 border-t-orange-500 rounded-full animate-spin"></div>
-        <p className="text-xl font-black text-blue-900 tracking-tighter italic">GrowPath Connecting...</p>
-      </div>
+      <div className="w-16 h-16 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin"></div>
     </div>
   );
 
   return (
     <div className="flex bg-[#F8FAFC] min-h-screen font-sans">
+      
+      {/* ADDED: The Toaster renders our beautiful modern popups! */}
+      <Toaster position="bottom-right" reverseOrder={false} />
+
       <Sidebar onSalesClick={() => setShowForm(false)} />
       <main className="flex-1 p-8 lg:p-14 flex flex-col overflow-x-hidden">
         <Routes>
           <Route path="/" element={
-            <OrderListPage 
-              showForm={showForm} setShowForm={setShowForm}
-              orders={orders} totalItems={totalItems}
-              searchTerm={searchTerm} setSearchTerm={setSearchTerm}
-              currentPage={currentPage} setCurrentPage={setCurrentPage}
-              itemsPerPage={itemsPerPage} customers={customers}
-              currencies={currencies} createOrder={createOrder}
-            />
+            <OrderListPage {...salesHook} showForm={showForm} setShowForm={setShowForm} />
           } />
           <Route path="/order/:id" element={
-            <OrderDetailsPage 
-              orders={orders} lines={lines} 
-              sites={sites} warehouses={warehouses}
-              linesLoading={linesLoading} fetchOrderLines={fetchOrderLines} 
-              createOrderLine={createOrderLine} searchProducts={searchProducts}
-              getProductVariants={getProductVariants} // 🔥 Pass it into the page here
-            />
+            <OrderDetailsPage {...salesHook} />
+          } />
+
+          <Route path="/purchase-requisitions" element={
+            <PurchaseRequisitions {...prHook} />
+          } />
+          <Route path="/purchase-requisitions/:id" element={
+            <RequisitionDetailsPage {...prHook} />
+          } />
+
+          <Route path="/purchase-orders" element={
+            <PurchaseOrdersPage {...poHook} />
+          } />
+          <Route path="/purchase-orders/:id" element={
+            <PurchaseOrderDetailsPage {...poHook} />
           } />
         </Routes>
       </main>

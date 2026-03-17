@@ -1,16 +1,13 @@
+
 {
   "rewrites": [
     {
       "source": "/api-data/:path*",
-      "destination": "https://growpath.sandbox.operations.eu.dynamics.com/:path*"
+      "destination": "https://usnconeboxax1aos.cloud.onebox.dynamics.com/:path*"
     },
     {
-      "source": "/api-token/:path*",
-      "destination": "https://login.microsoftonline.com/:path*"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/"
+      "source": "/api/getToken",
+      "destination": "/api/getToken.js"
     }
   ]
 }
