@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getAccessToken } from '../services/authService';
 import toast from 'react-hot-toast'; 
 
 export const useOrders = () => {
@@ -23,10 +22,9 @@ export const useOrders = () => {
     if (!orderId) return;
     setLinesLoading(true);
     try {
-      const token = await getAccessToken();
       const res = await fetch(
         `/api-data/data/SalesOrderLines?$filter=SalesOrderNumber eq '${orderId}'&$select=ItemNumber,LineDescription,OrderedSalesQuantity,SalesPrice,ShippingSiteId,ShippingWarehouseId,ProductColorId,ProductSizeId,ProductStyleId`,
-        { headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' } }
+        { headers: { 'Accept': 'application/json' } }
       );
       const data = await res.json();
       setLines(data.value || []);
@@ -37,11 +35,8 @@ export const useOrders = () => {
     }
   }, []);
 
-// 🔥 FIX: Wrapped in useCallback so React doesn't cancel the fetch during page load!
   const searchProducts = useCallback(async (inputValue) => {
     try {
-      const token = await getAccessToken();
-      
       let url = `/api-data/data/ProductsV2?$select=ProductNumber,ProductName,ProductSubType&$top=20`;
       
       if (inputValue && inputValue.trim().length > 0) {
@@ -50,7 +45,7 @@ export const useOrders = () => {
       }
         
       const res = await fetch(url, { 
-        headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' } 
+        headers: { 'Accept': 'application/json' } 
       });
       
       if (!res.ok) return [];
@@ -64,14 +59,13 @@ export const useOrders = () => {
     } catch (err) {
       return [];
     }
-  }, []); // <--- Empty dependency array locks it in memory!
+  }, []); 
 
   const getProductVariants = async (itemNumber) => {
     try {
-      const token = await getAccessToken();
       const res = await fetch(
         `/api-data/data/ReleasedProductVariantsV2?$filter=ItemNumber eq '${itemNumber}'&$select=ProductColorId,ProductSizeId,ProductStyleId`,
-        { headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' } }
+        { headers: { 'Accept': 'application/json' } }
       );
       const data = await res.json();
       return data.value || [];
@@ -83,7 +77,6 @@ export const useOrders = () => {
   const createOrderLine = async (orderId, lineData) => {
     const loadingToast = toast.loading('Adding Sales Line...'); 
     try {
-      const token = await getAccessToken();
       const payload = {
         dataAreaId: "usmf",
         SalesOrderNumber: orderId,
@@ -100,7 +93,7 @@ export const useOrders = () => {
 
       const res = await fetch('/api-data/data/SalesOrderLines', {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
         body: JSON.stringify(payload)
       });
       
@@ -122,7 +115,6 @@ export const useOrders = () => {
   const createOrder = async (orderData) => {
     const loadingToast = toast.loading('Creating Sales Order...'); 
     try {
-      const token = await getAccessToken();
       const payload = {
         dataAreaId: "usmf",
         OrderingCustomerAccountNumber: orderData.customerAccount,
@@ -131,7 +123,7 @@ export const useOrders = () => {
 
       const res = await fetch('/api-data/data/SalesOrderHeadersV3', {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
         body: JSON.stringify(payload)
       });
 
@@ -166,8 +158,7 @@ export const useOrders = () => {
   useEffect(() => {
     const loadInitialData = async () => {
       try {
-        const token = await getAccessToken();
-        const headers = { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' };
+        const headers = { 'Accept': 'application/json' };
         
         const [oRes, sRes, wRes, cRes, cuRes] = await Promise.all([
           fetch("/api-data/data/SalesOrderHeadersV3?cross-company=true&$filter=dataAreaId eq 'usmf'&$select=SalesOrderNumber,SalesOrderName,SalesOrderStatus,OrderingCustomerAccountNumber,OrderCreationDateTime&$orderby=OrderCreationDateTime desc&$top=100", { headers }),

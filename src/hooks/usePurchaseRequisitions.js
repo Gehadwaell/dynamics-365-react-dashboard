@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getAccessToken } from '../services/authService';
 import toast from 'react-hot-toast';
 
 export const usePurchaseRequisitions = () => {
@@ -20,10 +19,9 @@ export const usePurchaseRequisitions = () => {
     if (!reqId) return;
     setLinesLoading(true);
     try {
-      const token = await getAccessToken();
       const res = await fetch(
         `/api-data/data/PurchaseRequisitionLines?$filter=RequisitionNumber eq '${reqId}'`,
-        { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } }
+        { headers: { Accept: 'application/json' } }
       );
       if (!res.ok) throw new Error(`D365 Error: ${res.status}`);
       setReqLines((await res.json()).value || []);
@@ -33,14 +31,13 @@ export const usePurchaseRequisitions = () => {
 
   const searchProducts = async (inputValue) => {
     try {
-      const token = await getAccessToken();
       const filterClause = inputValue && inputValue.length >= 2 
         ? `&$filter=${encodeURIComponent(`ProductNumber eq '*${inputValue}*'`)}` 
         : '';
         
       const res = await fetch(
         `/api-data/data/ProductsV2?$select=ProductNumber,ProductName,ProductSubType${filterClause}&$top=20`,
-        { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } }
+        { headers: { Accept: 'application/json' } }
       );
       return ((await res.json()).value || []).map(p => ({
         value:   p.ProductNumber,
@@ -52,11 +49,10 @@ export const usePurchaseRequisitions = () => {
 
   const getProductVariants = async (itemNumber) => {
     try {
-      const token = await getAccessToken();
       const res = await fetch(
         `/api-data/data/ReleasedProductVariantsV2?$filter=ItemNumber eq '${itemNumber}'` +
         `&$select=ProductColorId,ProductSizeId,ProductStyleId`,
-        { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } }
+        { headers: { Accept: 'application/json' } }
       );
       return (await res.json()).value || [];
     } catch { return []; }
@@ -65,12 +61,11 @@ export const usePurchaseRequisitions = () => {
   const getItemPrice = useCallback(async (itemNumber) => {
     if (!itemNumber) return null;
     try {
-      const token = await getAccessToken();
       const res = await fetch(
         `/api-data/data/ReleasedProductsV2` +
         `?$filter=${encodeURIComponent(`ItemNumber eq '${itemNumber}'`)}` +
         `&$select=ItemNumber,PurchasePrice&$top=1`,
-        { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } }
+        { headers: { Accept: 'application/json' } }
       );
       if (res.ok) {
         const price = (await res.json()).value?.[0]?.PurchasePrice;
@@ -85,12 +80,11 @@ export const usePurchaseRequisitions = () => {
   const createRequisition = async (requisitionName) => {
     const loadingToast = toast.loading('Initializing Requisition...');
     try {
-      const token = await getAccessToken();
       const payload = { RequisitionName: requisitionName };
 
       const res = await fetch('/api-data/data/PurchaseRequisitionHeaders', {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
 
@@ -113,7 +107,6 @@ export const usePurchaseRequisitions = () => {
   const createRequisitionLine = async (reqId, lineData) => {
     const loadingToast = toast.loading('Syncing line to D365...');
     try {
-      const token     = await getAccessToken();
       const reqHeader = allRequisitions.find(r => r.RequisitionNumber === reqId) || {};
       const tomorrow  = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
       const safeDate  = tomorrow.toISOString().split('.')[0] + 'Z';
@@ -127,7 +120,7 @@ export const usePurchaseRequisitions = () => {
         CurrencyCode:              lineData.currencyCode || 'USD',
         RequestedDate:             safeDate,
         AccountingDate:            safeDate,
-        ItemNumber:                lineData.itemNumber, // Strictly enforce Catalog Items
+        ItemNumber:                lineData.itemNumber, 
       };
 
       if (lineData.siteId)      payload.ReceivingSiteId      = lineData.siteId;
@@ -143,7 +136,7 @@ export const usePurchaseRequisitions = () => {
 
       const res = await fetch('/api-data/data/PurchaseRequisitionLines', {
         method:  'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify(payload),
       });
 
@@ -164,10 +157,9 @@ export const usePurchaseRequisitions = () => {
   const deleteRequisitionLine = async (reqId, lineNumber) => {
     const loadingToast = toast.loading('Deleting line...');
     try {
-      const token = await getAccessToken();
       const res = await fetch(
         `/api-data/data/PurchaseRequisitionLines(RequisitionNumber='${reqId}',RequisitionLineNumber=${lineNumber})`,
-        { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }
+        { method: 'DELETE' }
       );
       
       if (res.ok) { 
@@ -191,8 +183,7 @@ export const usePurchaseRequisitions = () => {
   useEffect(() => {
     const load = async () => {
       try {
-        const token   = await getAccessToken();
-        const headers = { Authorization: `Bearer ${token}`, Accept: 'application/json' };
+        const headers = { Accept: 'application/json' };
 
         const [prRes, sRes, wRes, cRes] = await Promise.all([
           fetch('/api-data/data/PurchaseRequisitionHeaders?$orderby=RequisitionNumber desc&$top=100', { headers }),

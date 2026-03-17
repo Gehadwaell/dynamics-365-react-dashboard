@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getAccessToken } from '../services/authService';
 import toast from 'react-hot-toast';
 
 export const usePurchaseOrders = () => {
@@ -21,10 +20,9 @@ export const usePurchaseOrders = () => {
     if (!orderId) return;
     setLinesLoading(true);
     try {
-      const token = await getAccessToken();
       const res = await fetch(
         `/api-data/data/PurchaseOrderLinesV2?$filter=PurchaseOrderNumber eq '${orderId}'&$select=LineNumber,ItemNumber,LineDescription,OrderedPurchaseQuantity,PurchasePrice,ReceivingSiteId,ReceivingWarehouseId,ProductColorId,ProductSizeId,ProductStyleId`,
-        { headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' } }
+        { headers: { 'Accept': 'application/json' } }
       );
       const data = await res.json();
       setLines(data.value || []);
@@ -35,18 +33,15 @@ export const usePurchaseOrders = () => {
     }
   }, []);
 
-const searchProducts = async (inputValue) => {
+  const searchProducts = async (inputValue) => {
     try {
-      const token = await getAccessToken();
-      
-      // If they typed something, filter it. If not, just grab the first 20 items.
       const filterClause = inputValue && inputValue.length >= 2 
         ? `&$filter=${encodeURIComponent(`ProductNumber eq '*${inputValue}*'`)}` 
         : '';
       
       const res = await fetch(
         `/api-data/data/ProductsV2?$select=ProductNumber,ProductName,ProductSubType${filterClause}&$top=20`, 
-        { headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' } }
+        { headers: { 'Accept': 'application/json' } }
       );
       const data = await res.json();
       return (data.value || []).map(p => ({
@@ -59,10 +54,9 @@ const searchProducts = async (inputValue) => {
 
   const getProductVariants = async (itemNumber) => {
     try {
-      const token = await getAccessToken();
       const res = await fetch(
         `/api-data/data/ReleasedProductVariantsV2?$filter=ItemNumber eq '${itemNumber}'&$select=ProductColorId,ProductSizeId,ProductStyleId`,
-        { headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' } }
+        { headers: { 'Accept': 'application/json' } }
       );
       const data = await res.json();
       return data.value || [];
@@ -72,10 +66,9 @@ const searchProducts = async (inputValue) => {
   const getItemPrice = useCallback(async (itemNumber) => {
     if (!itemNumber) return null;
     try {
-      const token = await getAccessToken();
       const res = await fetch(
         `/api-data/data/ReleasedProductsV2?$filter=${encodeURIComponent(`ItemNumber eq '${itemNumber}'`)}&$select=ItemNumber,PurchasePrice&$top=1`,
-        { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } }
+        { headers: { Accept: 'application/json' } }
       );
       if (res.ok) {
         const price = (await res.json()).value?.[0]?.PurchasePrice;
@@ -88,7 +81,6 @@ const searchProducts = async (inputValue) => {
   const createOrder = async (orderData) => {
     const loadingToast = toast.loading('Initializing Purchase Order...');
     try {
-      const token = await getAccessToken();
       const payload = {
         dataAreaId: "usmf",
         OrderVendorAccountNumber: orderData.vendorAccount,
@@ -97,7 +89,7 @@ const searchProducts = async (inputValue) => {
 
       const res = await fetch('/api-data/data/PurchaseOrderHeadersV2', {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
 
@@ -131,7 +123,6 @@ const searchProducts = async (inputValue) => {
   const createOrderLine = async (orderId, lineData) => {
     const loadingToast = toast.loading('Syncing line to D365...');
     try {
-      const token = await getAccessToken();
       const nextLineNumber = lines.length > 0 ? Math.max(...lines.map(l => l.LineNumber || 0)) + 1 : 1;
 
       const payload = {
@@ -155,7 +146,7 @@ const searchProducts = async (inputValue) => {
 
       const res = await fetch('/api-data/data/PurchaseOrderLinesV2', {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
       
@@ -177,10 +168,9 @@ const searchProducts = async (inputValue) => {
   const deleteOrderLine = async (orderId, lineNumber) => {
     const loadingToast = toast.loading('Deleting line...');
     try {
-      const token = await getAccessToken();
       const res = await fetch(
         `/api-data/data/PurchaseOrderLinesV2(dataAreaId='usmf',PurchaseOrderNumber='${orderId}',LineNumber=${lineNumber})`, 
-        { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } }
+        { method: 'DELETE' }
       );
       if (res.ok) {
         setLines(prev => prev.filter(line => line.LineNumber !== lineNumber));
@@ -198,8 +188,7 @@ const searchProducts = async (inputValue) => {
   useEffect(() => {
     const loadInitialData = async () => {
       try {
-        const token = await getAccessToken();
-        const headers = { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' };
+        const headers = { 'Accept': 'application/json' };
         
         const [poRes, sRes, wRes, vRes, cuRes] = await Promise.all([
           fetch("/api-data/data/PurchaseOrderHeadersV2?cross-company=true&$filter=dataAreaId eq 'usmf'&$select=PurchaseOrderNumber,PurchaseOrderName,PurchaseOrderStatus,OrderVendorAccountNumber,AccountingDate&$orderby=AccountingDate desc,PurchaseOrderNumber desc&$top=100", { headers }),
