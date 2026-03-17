@@ -1,13 +1,12 @@
-
 {
   "rewrites": [
     {
-      "source": "/api-data/:path*",
-      "destination": "https://usnconeboxax1aos.cloud.onebox.dynamics.com/:path*"
+      "source": "/api-data/:match*",
+      "destination": "/api/proxy"
     },
     {
-      "source": "/api/getToken",
-      "destination": "/api/getToken.js"
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }
