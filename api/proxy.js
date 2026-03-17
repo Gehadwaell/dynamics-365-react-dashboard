@@ -1,9 +1,8 @@
 // api/proxy.js
 // Vercel serverless function — handles all /api-data/* requests.
-// Forwards them to D365 with the Bearer token injected server-side.
+// Forwards them to D365 with the Bearer token and preserves URL parameters.
 
 export default async function handler(req, res) {
-  // 🔥 FIX 1: Removed VITE_ prefix for absolute server-side security
   const {
     TENANT_ID,
     CLIENT_ID,
@@ -44,9 +43,24 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Token request error', details: err.message });
   }
 
-  // --- Step 2: Build the D365 target URL ---
-  const path = req.url.replace(/^\/api-data/, '');
-  const targetUrl = `${resource}${path}`;
+  // --- Step 2: Build the exact D365 target URL ---
+  const routePath = req.query.route || '';
+  let targetUrl = `${resource}/${routePath}`;
+
+  // Carefully extract any D365 filters (like $select or $top) without breaking them
+  const urlParts = req.url.split('?');
+  if (urlParts.length > 1) {
+    const rawQueryString = urlParts[1];
+    
+    // Remove the 'route=...' parameter that Vercel automatically injected
+    const cleanQueryString = rawQueryString
+      .replace(/(?:^|&)route=[^&]*/g, '') 
+      .replace(/^&/, ''); // Clean up any leftover ampersands
+
+    if (cleanQueryString) {
+      targetUrl += `?${cleanQueryString}`;
+    }
+  }
 
   // --- Step 3: Forward the request to D365 ---
   const forwardHeaders = {
@@ -66,7 +80,6 @@ export default async function handler(req, res) {
     d365Res = await fetch(targetUrl, {
       method:  req.method,
       headers: forwardHeaders,
-      // 🔥 FIX 2: Added a failsafe to ensure empty bodies don't break POST/PATCH requests
       body:    ['POST', 'PUT', 'PATCH'].includes(req.method) && req.body && Object.keys(req.body).length > 0
         ? JSON.stringify(req.body)
         : undefined,
@@ -75,7 +88,7 @@ export default async function handler(req, res) {
     return res.status(502).json({ error: 'D365 request failed', details: err.message });
   }
 
-  // --- Step 4: Stream the D365 response back ---
+  // --- Step 4: Stream the D365 response back to your React app ---
   const responseText = await d365Res.text();
 
   res.status(d365Res.status);
