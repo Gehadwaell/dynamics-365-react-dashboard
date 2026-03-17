@@ -77,10 +77,18 @@ export const usePurchaseRequisitions = () => {
     }
   }, []);
 
-  const createRequisition = async (requisitionName) => {
+const createRequisition = async (requisitionData) => {
     const loadingToast = toast.loading('Initializing Requisition...');
     try {
-      const payload = { RequisitionName: requisitionName };
+      // 🔥 FIX: Check if the UI accidentally passed an object instead of a string
+      const actualName = typeof requisitionData === 'object' 
+        ? (requisitionData.RequisitionName || requisitionData.name || Object.values(requisitionData)[0] || "New Requisition") 
+        : requisitionData;
+
+      const payload = { 
+        RequisitionName: actualName,
+        BuyingLegalEntityId: "usmf" // Added this because F&O usually requires it!
+      };
 
       const res = await fetch('/api-data/data/PurchaseRequisitionHeaders', {
         method: 'POST',
@@ -95,6 +103,7 @@ export const usePurchaseRequisitions = () => {
         return newReq; 
       } else {
         const errorText = await res.text();
+        console.error("D365 Creation Error:", errorText);
         toast.error('Failed to create header.', { id: loadingToast });
         return null;
       }
