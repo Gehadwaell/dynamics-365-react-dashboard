@@ -76,14 +76,15 @@ export const usePurchaseRequisitions = () => {
 const createRequisition = async (requisitionData) => {
     const loadingToast = toast.loading('Initializing Requisition...');
     try {
+      // Clean the input to ensure it's a string
       const actualName = typeof requisitionData === 'object' 
         ? (requisitionData.RequisitionName || requisitionData.name || "New Requisition") 
         : requisitionData;
 
+      // 🔥 CLEAN PAYLOAD: Removing all extra fields. 
+      // D365 will handle the Legal Entity automatically.
       const payload = { 
-        RequisitionName: String(actualName),
-        // 🔥 CHANGED: Most D365 entities use DataAreaId instead of BuyingLegalEntityId
-        DataAreaId: "usmf" 
+        RequisitionName: String(actualName)
       };
 
       const res = await fetch('/api-data/data/PurchaseRequisitionHeaders', {
@@ -100,8 +101,8 @@ const createRequisition = async (requisitionData) => {
       } else {
         const errorData = await res.json();
         console.error("D365 Creation Error:", errorData);
-        // This will show us the REAL error if DataAreaId also fails
-        toast.error(`D365 Error: ${errorData?.error?.message || 'Failed to create'}`, { id: loadingToast });
+        // This will show us the REAL error if it still fails
+        toast.error(`D365 Error: ${errorData?.error?.message || 'Check Console'}`, { id: loadingToast });
         return null;
       }
     } catch (err) { 
@@ -109,7 +110,6 @@ const createRequisition = async (requisitionData) => {
       return null; 
     }
   };
-
   const createRequisitionLine = async (reqId, lineData) => {
     const loadingToast = toast.loading('Syncing line to D365...');
     try {
